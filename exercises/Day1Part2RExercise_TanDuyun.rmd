@@ -75,7 +75,7 @@ Create a function that given a data frame will print the name of each column and
 ```{r}
 print_df_info <- function(df) {
   col_names <- colnames(df)
-  for (i in colnames) {
+  for (i in col_names) {
     print(paste0(i, ": ", class(df[, i])))
   }
 }
@@ -106,15 +106,16 @@ print_vec_info(gapminder$lifeExp, TRUE)
 What is the relationship between GDP per capita and life expectancy? Does this relationship change over time? (Hint: Use the natural log of both variables.)
 
 ```{r}
+years <- unique(gapminder$year)
 viz_lm <-
   function(df, y, x, year) {
-    dat <- df[df[["year"]] == year, ]
-    logy <- log(dat[[y]])
-    logx <- log(dat[[x]])
+    df_year <- df[df[["year"]] == year, ]
+    logy <- log(df_year[[y]])
+    logx <- log(df_year[[x]])
     fit <- lm(logy ~ logx)
     plot(logy ~ logx, main = year,
          xlab = x, ylab = y)
-    lines(x, predict(fit), col = 'blue')
+    lines (logx, predict(fit), col = "red")
   }
 for (i in years) {
   viz_lm(gapminder, "lifeExp", "gdpPercap", i)
@@ -125,3 +126,28 @@ for (i in years) {
 
 
 Does the relationship between GDP per capita and life expectacy vary by continent? Make sure you divide the Americas into North and South America.
+
+```{r}
+gapminder$new_continent <- gapminder$continent
+gapminder$new_continent[gapminder$continent == "Americas"] <- "South America"
+northamerica <- c("United States", "Mexico", "Canada")
+gapminder$new_continent[gapminder$country %in% northamerica] <- "North America"
+continent <- unique(gapminder$new_continent)
+
+viz_lm <-
+  function(df, y, x, continent) {
+    df_cont <- df[df[["new_continent"]] == continent, ]
+    logy <- log(df_cont[[y]])
+    logx <- log(df_cont[[x]])
+    fit <- lm(logy ~ logx)
+    plot(logy ~ logx, main = continent,
+         xlab = x, ylab = y)
+    lines (logx, predict(fit), col = "red")
+  }
+
+
+for (i in continent) {
+  viz_lm(gapminder, "lifeExp", "gdpPercap", i)
+}
+```
+
