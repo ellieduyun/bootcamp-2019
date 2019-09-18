@@ -1,0 +1,134 @@
+---
+title: "R Day 2 exercises"
+author: "Duyun Tan "
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r global_options, echo = FALSE, include = FALSE}
+knitr::opts_chunk$set(echo=answers, eval=answers,
+                      warning = FALSE, message = FALSE,
+                      cache = FALSE, tidy = FALSE)
+```
+
+<!-- BEFORE YOU START, REMEMBER TO RENAME THE .RMD FILE AND SAVE IT AS day2_exercises_LastNameFirstName.Rmd AND THEN REMOVE THIS INSTRUCTION -->
+
+## Load the data
+```{r}
+library(dplyr)
+library(data.table)
+library(lubridate)
+```
+
+Read both California energy datasets. Make sure the `datetime` variable is in an appropriate data type (i.e. not character). 
+
+```{r}
+generation_dp <- read.csv(here::here("data/ca_energy_generation.csv"), 
+                          stringsAsFactors = F)
+imports_dp <- read.csv(here::here("data/ca_energy_imports.csv"), 
+                       stringsAsFactors = F)
+```
+
+```{r}
+generation_dp %>% mutate(datetime = as_datetime(datetime))
+imports_dp %>%  mutate(datetime = as_datetime(datetime))
+
+head(generation_dp)
+head(imports_dp)
+```
+
+## Merge and reshape the data
+
+Merge the two datasets and then melt the resulting dataframe/datatable to make it tidy.
+
+```{r}
+merged_two <- merge(generation_dp, imports_dp, by = "datetime")
+head(merged_two)
+
+long_ca_energy <- melt(merged_two, 
+                       id.vars = "datetime",
+                       variable.name = "source",
+                       value.name = "output")
+
+head(long_ca_energy)
+```
+
+
+## Creating new variables
+
+Create a series of new variables: 
+
+1. `day`, which is the year-month-day, without the hour. The `lubridate` function `as_date` will do this.
+2. `log_output`, which is the natural log of the output.
+3. **Challenge**: `per_output`, which is the percent of daily output represented by each observation. You will need to use `group_by` and to create a new variable with the total output for the day. (Make sure to use `ungroup()` after this!)
+
+Bonus: If you are using `dplyr`, try to do this all in one pipe!
+
+```{r}
+names(long_ca_energy)
+
+long_ca_energy <- long_ca_energy %>% 
+    mutate(day = as_date(datetime), log_output = log(output)) %>% 
+    group_by(day) %>% 
+    mutate(total_output = sum(output)) %>% 
+    ungroup() %>% 
+    mutate(per_output = output/total_output)
+    
+
+long_ca_energy %>% select(day, log_output, per_output) %>% head()
+```
+
+
+## Summarizing and analyzing data
+
+1. Which source has the greatest mean output by hour? (Hint: Use the `dplyr` verb `arrange(desc(variable))` to order the data frame so that the largest value of `variable` is first. Don't use `desc` and it arranges in ascending order. The `data.table` function is `setorder`.) Which has the least?
+```{r}
+long_ca_energy %>%
+  group_by(source) %>%
+  summarize(mean_hourly = mean(output, na.rm = T)) %>%
+  arrange(desc(mean_hourly))
+
+long_ca_energy %>%
+  group_by(source) %>%
+  summarize(mean_hourly = mean(output, na.rm = T)) %>%
+  arrange(mean_hourly)
+```
+2. Which source has the greatest mean output by day? Which has the least? (Do not include zero values.)
+
+
+```{r}
+long_ca_energy %>%
+  filter(output>0) %>% 
+  group_by(day, source) %>%
+  summarize(mean_daily = mean(output, na.rm = T)) %>%
+  arrange(desc(mean_daily))
+```
+
+3. Which sources has the greatest variance in usage over the course of a dataset? Which has the least? (Do not include zero values.)
+
+```{r}
+long_ca_energy %>%
+  filter(output>0) %>%
+  group_by(source) %>%
+  summarize(sd_output = sd(output, na.rm = T)) %>%
+  arrange(desc(sd_output))
+```
+
+
+
+## Analyzing renewable versus non-renewable energy sources
+
+The dataset `regroup.csv` has information about which sources are considered renewable by the state of California. Use this dataset, along with yourdata manipulation skills, to explore the use of renewable and non-renewable sources. Annotate what your descisions for the analysis.
+
+Hint: Use your merge skills to merge the CA energy data with the `regroup` data. Which variable should you join by?
+
+```{r}
+regroup <- read.csv(here::here("data/ca_energy_regroup.csv"), 
+                          stringsAsFactors = F)
+
+head(regroup)
+
+
+
+```
+
